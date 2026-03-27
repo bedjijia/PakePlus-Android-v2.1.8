@@ -1,11 +1,1950 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校自动打铃系统</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e88e5',
+                        secondary: '#64b5f6',
+                        accent: '#0d47a1',
+                        light: '#e3f2fd',
+                        dark: '#0d47a1'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'panel': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 3px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+                background: #a1a1a1;
+            }
+        }
+    </style>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #f0f8ff;
+            background-image: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+            min-height: 100vh;
+        }
+        
+        .bell-card {
+            transition: all 0.3s ease;
+        }
+        
+        .bell-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .time-input::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #1e88e5;
+        }
+        
+        input:focus + .slider {
+            box-shadow: 0 0 1px #1e88e5;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        @keyframes bell-ring {
+            0% { transform: rotate(0deg); }
+            10% { transform: rotate(15deg); }
+            20% { transform: rotate(-15deg); }
+            30% { transform: rotate(15deg); }
+            40% { transform: rotate(-15deg); }
+            50% { transform: rotate(0deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        .bell-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .bell-icon.ringing {
+            animation: bell-ring 1s ease-in-out;
+        }
+        
+        .audio-wave {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 20px;
+        }
+        
+        .audio-wave .bar {
+            width: 3px;
+            height: 100%;
+            background-color: #1e88e5;
+            border-radius: 3px;
+            animation: wave 1s ease-in-out infinite;
+        }
+        
+        .audio-wave .bar:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .audio-wave .bar:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+        
+        .audio-wave .bar:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+        
+        .audio-wave .bar:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes wave {
+            0%, 100% {
+                height: 30%;
+            }
+            50% {
+                height: 100%;
+            }
+        }
+        
+
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* 三页式滑动容器样式 */
+        .swiper-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        
+        .swiper-wrapper {
+            display: flex;
+            transition: transform 0.3s ease-out;
+            will-change: transform;
+        }
+        
+        .swiper-slide {
+            flex: 0 0 100%;
+            width: 100%;
+            min-height: calc(100vh - 140px);
+            padding: 0 4px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        
+        .swiper-slide::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .swiper-slide::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+        
+        /* 页面指示器 */
+        .page-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            position: sticky;
+            bottom: 0;
+            background: linear-gradient(to top, rgba(240, 248, 255, 1) 0%, rgba(240, 248, 255, 0.9) 80%, transparent 100%);
+            z-index: 10;
+        }
+        
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #cbd5e1;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .page-dot.active {
+            width: 24px;
+            border-radius: 4px;
+            background-color: #1e88e5;
+        }
+        
+        /* 页面标题导航 */
+        .page-nav {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 8px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .page-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: #64748b;
+            font-size: 12px;
+        }
+        
+        .page-nav-item.active {
+            color: #1e88e5;
+            background-color: rgba(30, 136, 229, 0.1);
+        }
+        
+        .page-nav-item i {
+            font-size: 20px;
+        }
+        
+        /* 滑动提示 */
+        .swipe-hint {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 12px 8px;
+            background: rgba(30, 136, 229, 0.1);
+            border-radius: 8px;
+            color: #1e88e5;
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .swipe-hint.show {
+            opacity: 1;
+        }
+        
+        .swipe-hint.left {
+            left: 8px;
+        }
+        
+        .swipe-hint.right {
+            right: 8px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- 顶部导航栏 -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-3 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-bell text-xl bell-icon" id="main-bell-icon"></i>
+                <h1 class="text-lg font-bold">学校自动打铃系统</h1>
+            </div>
+            <div class="flex items-center space-x-1">
+                <span id="current-time" class="font-mono text-sm"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 页面导航 -->
+    <div class="page-nav container mx-auto px-3">
+        <div class="page-nav-item active" data-page="0">
+            <i class="fa fa-refresh"></i>
+            <span>循环提醒</span>
+        </div>
+        <div class="page-nav-item" data-page="1">
+            <i class="fa fa-clock-o"></i>
+            <span>时间表</span>
+        </div>
+        <div class="page-nav-item" data-page="2">
+            <i class="fa fa-cog"></i>
+            <span>系统选项</span>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-3">
+        <div class="swiper-container">
+            <!-- 滑动提示 -->
+            <div class="swipe-hint left" id="swipe-hint-left">
+                <i class="fa fa-chevron-left"></i>
+            </div>
+            <div class="swipe-hint right" id="swipe-hint-right">
+                <i class="fa fa-chevron-right"></i>
+            </div>
+            
+            <div class="swiper-wrapper" id="swiper-wrapper">
+                <!-- 第一页：循环定时提醒 -->
+                <div class="swiper-slide">
+                    <div class="space-y-4 pb-20">
+                        <div class="bg-white rounded-lg shadow-panel p-4">
+                            <h2 class="text-lg font-bold text-primary flex items-center mb-4">
+                                <i class="fa fa-refresh mr-2"></i> 循环定时提醒
+                            </h2>
+                
+                <!-- 时间参数设置 -->
+                <div class="mb-4">
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">首次间隔 (分钟)</label>
+                            <input type="number" id="loop-interval-a" min="1" max="999" value="25" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">第二次间隔 (分钟)</label>
+                            <input type="number" id="loop-interval-b" min="1" max="999" value="5" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                        </div>
+                    </div>
+                    
+                    <!-- 状态显示 -->
+                    <div id="loop-status" class="p-3 bg-light rounded-md mb-3 hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">当前状态</span>
+                            <span id="loop-state-text" class="text-sm font-semibold text-primary">已停止</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">下次提醒</span>
+                            <span id="loop-next-time" class="text-sm font-mono font-semibold">--:--</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-sm text-gray-600">当前间隔</span>
+                            <span id="loop-current-interval" class="text-sm font-semibold">-</span>
+                        </div>
+                    </div>
+                    
+                        <!-- 控制按钮 -->
+                        <div class="flex space-x-2">
+                            <button id="loop-start-btn" class="flex-1 bg-primary hover:bg-accent text-white px-3 py-2 rounded-md text-sm transition-all-300">
+                                <i class="fa fa-play mr-1"></i> 开始
+                            </button>
+                            <button id="loop-pause-btn" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-md text-sm transition-all-300 hidden">
+                                <i class="fa fa-pause mr-1"></i> 暂停
+                            </button>
+                            <button id="loop-resume-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-md text-sm transition-all-300 hidden">
+                                <i class="fa fa-play mr-1"></i> 继续
+                            </button>
+                            <button id="loop-stop-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm transition-all-300 hidden">
+                                <i class="fa fa-stop mr-1"></i> 停止
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 第二页：时间表和铃声设置 -->
+        <div class="swiper-slide">
+            <div class="space-y-4 pb-20">
+                <!-- 时间表设置 -->
+                <div class="bg-white rounded-lg shadow-panel p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                        <h2 class="text-lg font-bold text-primary flex items-center">
+                            <i class="fa fa-clock-o mr-2"></i> 时间表设置
+                        </h2>
+                        <button id="add-time-btn" class="bg-primary hover:bg-accent text-white px-3 py-2 rounded-md transition-all-300 flex items-center text-sm w-full sm:w-auto">
+                            <i class="fa fa-plus mr-1"></i> 添加时间点
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-y-auto max-h-[300px] scrollbar-thin">
+                        <div id="schedule-list" class="space-y-3">
+                            <!-- 时间表将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 铃声设置 -->
+                <div class="bg-white rounded-lg shadow-panel p-4">
+                    <h2 class="text-lg font-bold text-primary flex items-center mb-4">
+                        <i class="fa fa-volume-up mr-2"></i> 铃声设置
+                    </h2>
+                    
+                    <!-- 上课铃声设置 -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">上课铃声</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="class-start-name" class="text-sm text-gray-600">未选择</span>
+                            <button id="play-class-start" class="text-primary hover:text-accent transition-all-300">
+                                <i class="fa fa-play-circle text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <input type="file" id="class-start-file" accept="audio/mp3" class="hidden">
+                            <button id="select-class-start" class="flex-1 bg-secondary hover:bg-primary text-white px-3 py-2 rounded-md text-sm transition-all-300">
+                                选择铃声
+                            </button>
+                            <button id="reset-class-start" class="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-md text-sm transition-all-300">
+                                重置
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 下课铃声设置 -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">下课铃声</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="class-end-name" class="text-sm text-gray-600">未选择</span>
+                            <button id="play-class-end" class="text-primary hover:text-accent transition-all-300">
+                                <i class="fa fa-play-circle text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <input type="file" id="class-end-file" accept="audio/mp3" class="hidden">
+                            <button id="select-class-end" class="flex-1 bg-secondary hover:bg-primary text-white px-3 py-2 rounded-md text-sm transition-all-300">
+                                选择铃声
+                            </button>
+                            <button id="reset-class-end" class="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-md text-sm transition-all-300">
+                                重置
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 音量控制 -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">音量控制</h3>
+                        <input type="range" id="volume-control" min="0" max="100" value="80" class="w-full accent-primary">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>静音</span>
+                            <span>最大音量</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 第三页：系统选项 -->
+        <div class="swiper-slide">
+            <div class="space-y-4 pb-20">
+                <!-- 系统选项 -->
+                <div class="bg-white rounded-lg shadow-panel p-4">
+                    <h2 class="text-lg font-bold text-primary flex items-center mb-4">
+                        <i class="fa fa-cog mr-2"></i> 系统选项
+                    </h2>
+                    
+                    <!-- 配置文件导入导出 -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">配置管理</h3>
+                        <div class="flex space-x-2">
+                            <input type="file" id="import-config" accept=".json" class="hidden">
+                            <button id="import-btn" class="flex-1 bg-secondary hover:bg-primary text-white px-3 py-2 rounded-md text-sm transition-all-300">
+                                <i class="fa fa-upload mr-1"></i> 导入配置
+                            </button>
+                            <button id="export-btn" class="flex-1 bg-secondary hover:bg-primary text-white px-3 py-2 rounded-md text-sm transition-all-300">
+                                <i class="fa fa-download mr-1"></i> 导出配置
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 系统状态 -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">系统状态</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span>打铃功能</span>
+                            <label class="switch">
+                                <input type="checkbox" id="bell-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>声音输出</span>
+                            <label class="switch">
+                                <input type="checkbox" id="sound-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- 下次打铃提示 -->
+                    <div class="p-3 bg-light rounded-md">
+                        <h3 class="font-semibold text-gray-700 mb-2 flex items-center">
+                            <i class="fa fa-bell-o mr-1"></i> 下次打铃
+                        </h3>
+                        <div id="next-bell-info" class="text-sm">
+                            <p>距离下次打铃还有: <span id="time-until-next" class="font-mono font-semibold">--:--:--</span></p>
+                            <p>类型: <span id="next-bell-type" class="font-semibold">-</span></p>
+                            <p>时间: <span id="next-bell-time" class="font-semibold">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 页面指示器 -->
+    <div class="page-indicator">
+        <div class="page-dot active" data-page="0"></div>
+        <div class="page-dot" data-page="1"></div>
+        <div class="page-dot" data-page="2"></div>
+    </div>
+</div>
+</main>
+
+    <!-- 添加/编辑时间点的模态框 -->
+    <div id="time-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden fade-in">
+        <div class="bg-white rounded-lg shadow-lg p-5 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-primary" id="modal-title">添加时间点</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700 p-1">
+                    <i class="fa fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="time-form">
+                <input type="hidden" id="time-id">
+                
+                <div class="mb-4">
+                    <label for="time-input" class="block text-gray-700 mb-1">时间</label>
+                    <input type="time" id="time-input" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary time-input" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="bell-type" class="block text-gray-700 mb-1">铃声类型</label>
+                    <select id="bell-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="classStart">上课铃</option>
+                        <option value="classEnd">下课铃</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="time-name" class="block text-gray-700 mb-1">名称</label>
+                    <input type="text" id="time-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="例如：第一节课" required>
+                </div>
+                
+                <div class="flex flex-wrap justify-end space-x-2 gap-2 mt-6">
+                    <button type="button" id="delete-time" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md transition-all-300 hidden">
+                        <i class="fa fa-trash mr-1"></i> 删除
+                    </button>
+                    <button type="button" id="cancel-modal" class="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-md transition-all-300">
+                        取消
+                    </button>
+                    <button type="submit" class="bg-primary hover:bg-accent text-white px-3 py-2 rounded-md transition-all-300">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div class="flex items-start">
+            <div class="bg-primary text-white p-2 rounded-full mr-3">
+                <i class="fa fa-bell" id="notification-icon"></i>
+            </div>
+            <div class="flex-1">
+                <h4 class="font-semibold" id="notification-title">通知标题</h4>
+                <p class="text-sm text-gray-600" id="notification-message">通知内容</p>
+            </div>
+            <button id="close-notification" class="text-gray-400 hover:text-gray-600">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let schedule = [];
+        let bellSounds = {
+            classStart: {
+                name: '默认上课铃',
+                filePath: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'
+            },
+            classEnd: {
+                name: '默认下课铃',
+                filePath: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'
+            }
+        };
+        let settings = {
+            bellEnabled: true,
+            soundEnabled: true,
+            volume: 80
+        };
+        let currentEditId = null;
+        let audioPlayers = {
+            classStart: null,
+            classEnd: null,
+            preview: null
+        };
+        let checkInterval = null;
+        let nextBellTimeout = null;
+        
+        // 循环定时器全局变量
+        let loopTimer = {
+            isRunning: false,
+            isPaused: false,
+            intervalA: 25,  // 首次间隔（分钟）
+            intervalB: 5,   // 第二次间隔（分钟）
+            currentInterval: 'A', // 当前处于哪个间隔（'A' 或 'B'）
+            nextReminderTime: null, // 下次提醒时间
+            timeoutId: null,  // 定时器ID
+            remainingTime: 0, // 暂停时剩余的时间（毫秒）
+            pauseStartTime: null // 暂停开始时间
+        };
+        
+        // DOM 元素
+        const scheduleList = document.getElementById('schedule-list');
+        const timeModal = document.getElementById('time-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const timeForm = document.getElementById('time-form');
+        const timeId = document.getElementById('time-id');
+        const timeInput = document.getElementById('time-input');
+        const bellType = document.getElementById('bell-type');
+        const timeName = document.getElementById('time-name');
+        const deleteTimeBtn = document.getElementById('delete-time');
+        const addTimeBtn = document.getElementById('add-time-btn');
+        const closeModalBtn = document.getElementById('close-modal');
+        const cancelModalBtn = document.getElementById('cancel-modal');
+        const classStartName = document.getElementById('class-start-name');
+        const classEndName = document.getElementById('class-end-name');
+        const playClassStartBtn = document.getElementById('play-class-start');
+        const playClassEndBtn = document.getElementById('play-class-end');
+        const selectClassStartBtn = document.getElementById('select-class-start');
+        const selectClassEndBtn = document.getElementById('select-class-end');
+        const resetClassStartBtn = document.getElementById('reset-class-start');
+        const resetClassEndBtn = document.getElementById('reset-class-end');
+        const classStartFile = document.getElementById('class-start-file');
+        const classEndFile = document.getElementById('class-end-file');
+        const volumeControl = document.getElementById('volume-control');
+        const importBtn = document.getElementById('import-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const importConfig = document.getElementById('import-config');
+        const bellEnabledSwitch = document.getElementById('bell-enabled');
+        const soundEnabledSwitch = document.getElementById('sound-enabled');
+        const currentTimeDisplay = document.getElementById('current-time');
+        const timeUntilNextDisplay = document.getElementById('time-until-next');
+        const nextBellTypeDisplay = document.getElementById('next-bell-type');
+        const nextBellTimeDisplay = document.getElementById('next-bell-time');
+        const notification = document.getElementById('notification');
+        const notificationTitle = document.getElementById('notification-title');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationIcon = document.getElementById('notification-icon');
+        const closeNotificationBtn = document.getElementById('close-notification');
+        const mainBellIcon = document.getElementById('main-bell-icon');
+        
+        // 循环定时器 DOM 元素
+        const loopIntervalAInput = document.getElementById('loop-interval-a');
+        const loopIntervalBInput = document.getElementById('loop-interval-b');
+        const loopStatusDiv = document.getElementById('loop-status');
+        const loopStateText = document.getElementById('loop-state-text');
+        const loopNextTime = document.getElementById('loop-next-time');
+        const loopCurrentInterval = document.getElementById('loop-current-interval');
+        const loopStartBtn = document.getElementById('loop-start-btn');
+        const loopPauseBtn = document.getElementById('loop-pause-btn');
+        const loopResumeBtn = document.getElementById('loop-resume-btn');
+        const loopStopBtn = document.getElementById('loop-stop-btn');
+        
+        // 滑动容器 DOM 元素
+        const swiperWrapper = document.getElementById('swiper-wrapper');
+        const pageDots = document.querySelectorAll('.page-dot');
+        const pageNavItems = document.querySelectorAll('.page-nav-item');
+        const swipeHintLeft = document.getElementById('swipe-hint-left');
+        const swipeHintRight = document.getElementById('swipe-hint-right');
+        
+        // 滑动相关变量
+        let currentPage = 0;
+        const totalPages = 3;
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+        const swipeThreshold = 50; // 滑动阈值
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化音频播放器
+            initAudioPlayers();
+            
+            // 加载本地存储的配置
+            loadFromLocalStorage();
+            
+            // 加载循环定时器设置
+            loadLoopSettings();
+            
+            // 渲染时间表
+            renderSchedule();
+            
+            // 更新UI状态
+            updateUIState();
+            
+            // 启动时间检查
+            startBellChecker();
+            
+            // 更新当前时间显示
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            
+            // 更新下次打铃信息
+            updateNextBellInfo();
+            
+            // 定时更新循环定时器显示
+            setInterval(() => {
+                if (loopTimer.isRunning && !loopTimer.isPaused) {
+                    updateLoopDisplay();
+                }
+            }, 1000);
+            
+            // 事件监听
+            setupEventListeners();
+            
+            // 初始化滑动功能
+            initSwiper();
+            
+            // 加载保存的页面
+            loadSavedPage();
+        });
+        
+        // 初始化音频播放器
+        function initAudioPlayers() {
+            audioPlayers.classStart = new Audio(bellSounds.classStart.filePath);
+            audioPlayers.classEnd = new Audio(bellSounds.classEnd.filePath);
+            audioPlayers.preview = new Audio();
+            
+            // 设置音量
+            setVolume(settings.volume);
+        }
+        
+        // 设置音量
+        function setVolume(volume) {
+            const volumeValue = volume / 100;
+            audioPlayers.classStart.volume = volumeValue;
+            audioPlayers.classEnd.volume = volumeValue;
+            audioPlayers.preview.volume = volumeValue;
+            settings.volume = volume;
+        }
+        
+        // 加载本地存储的配置
+        function loadFromLocalStorage() {
+            try {
+                const savedSchedule = localStorage.getItem('schoolBellSchedule');
+                const savedBellSounds = localStorage.getItem('schoolBellSounds');
+                const savedSettings = localStorage.getItem('schoolBellSettings');
+                
+                if (savedSchedule) {
+                    schedule = JSON.parse(savedSchedule);
+                } else {
+                    // 默认时间表
+                    schedule = [
+                        { id: '1', time: '08:00', type: 'classStart', name: '第一节课' },
+                        { id: '2', time: '08:45', type: 'classEnd', name: '第一节课下课' },
+                        { id: '3', time: '08:55', type: 'classStart', name: '第二节课' },
+                        { id: '4', time: '09:40', type: 'classEnd', name: '第二节课下课' },
+                        { id: '5', time: '10:00', type: 'classStart', name: '第三节课' },
+                        { id: '6', time: '10:45', type: 'classEnd', name: '第三节课下课' },
+                        { id: '7', time: '10:55', type: 'classStart', name: '第四节课' },
+                        { id: '8', time: '11:40', type: 'classEnd', name: '第四节课下课' },
+                        { id: '9', time: '14:00', type: 'classStart', name: '第五节课' },
+                        { id: '10', time: '14:45', type: 'classEnd', name: '第五节课下课' },
+                        { id: '11', time: '14:55', type: 'classStart', name: '第六节课' },
+                        { id: '12', time: '15:40', type: 'classEnd', name: '第六节课下课' },
+                        { id: '13', time: '16:00', type: 'classStart', name: '第七节课' },
+                        { id: '14', time: '16:45', type: 'classEnd', name: '第七节课下课' }
+                    ];
+                }
+                
+                if (savedBellSounds) {
+                    bellSounds = JSON.parse(savedBellSounds);
+                }
+                
+                if (savedSettings) {
+                    settings = { ...settings, ...JSON.parse(savedSettings) };
+                }
+            } catch (error) {
+                console.error('加载配置失败:', error);
+                showNotification('错误', '加载配置失败，使用默认设置', 'error');
+            }
+        }
+        
+        // 保存配置到本地存储
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('schoolBellSchedule', JSON.stringify(schedule));
+                localStorage.setItem('schoolBellSounds', JSON.stringify(bellSounds));
+                localStorage.setItem('schoolBellSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                showNotification('错误', '保存配置失败', 'error');
+            }
+        }
+        
+        // 渲染时间表
+        function renderSchedule() {
+            // 按时间排序
+            schedule.sort((a, b) => {
+                return a.time.localeCompare(b.time);
+            });
+            
+            // 清空列表
+            scheduleList.innerHTML = '';
+            
+            // 如果没有时间点，显示提示
+            if (schedule.length === 0) {
+                scheduleList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fa fa-clock-o text-3xl mb-2"></i>
+                        <p>暂无时间点，请添加</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 渲染每个时间点
+            schedule.forEach(item => {
+                const bellCard = document.createElement('div');
+                bellCard.className = 'bell-card bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:shadow-md';
+                bellCard.dataset.id = item.id;
+                
+                const typeClass = item.type === 'classStart' ? 'text-green-600' : 'text-red-600';
+                const typeIcon = item.type === 'classStart' ? 'fa-sign-in' : 'fa-sign-out';
+                const typeText = item.type === 'classStart' ? '上课' : '下课';
+                
+                bellCard.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="mr-3 ${typeClass}">
+                            <i class="fa ${typeIcon} text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-mono font-semibold">${item.time}</div>
+                            <div class="text-sm text-gray-600">${item.name}</div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="edit-time p-2 text-gray-500 hover:text-primary" data-id="${item.id}">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                        <button class="delete-time p-2 text-gray-500 hover:text-red-500" data-id="${item.id}">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                scheduleList.appendChild(bellCard);
+            });
+        }
+        
+        // 更新UI状态
+        function updateUIState() {
+            // 更新铃声名称显示
+            classStartName.textContent = bellSounds.classStart.name;
+            classEndName.textContent = bellSounds.classEnd.name;
+            
+            // 更新开关状态
+            bellEnabledSwitch.checked = settings.bellEnabled;
+            soundEnabledSwitch.checked = settings.soundEnabled;
+            
+            // 更新音量滑块
+            volumeControl.value = settings.volume;
+            
+            // 更新音频源
+            if (audioPlayers.classStart) {
+                audioPlayers.classStart.src = bellSounds.classStart.filePath;
+            }
+            if (audioPlayers.classEnd) {
+                audioPlayers.classEnd.src = bellSounds.classEnd.filePath;
+            }
+        }
+        
+        // 启动时间检查
+        function startBellChecker() {
+            // 立即检查一次
+            checkBellTime();
+            
+            // 设置每分钟检查一次
+            checkInterval = setInterval(checkBellTime, 60000);
+        }
+        
+        // 检查是否到达打铃时间
+        function checkBellTime() {
+            if (!settings.bellEnabled) return;
+            
+            const now = new Date();
+            const currentTime = formatTime(now);
+            
+            // 查找当前时间是否有打铃
+            const bellItem = schedule.find(item => item.time === currentTime);
+            
+            if (bellItem) {
+                playBell(bellItem);
+            }
+            
+            // 更新下次打铃信息
+            updateNextBellInfo();
+        }
+        
+        // 播放铃声
+        function playBell(bellItem) {
+            if (!settings.soundEnabled) return;
+            
+            // 显示通知
+            const bellTypeText = bellItem.type === 'classStart' ? '上课' : '下课';
+            showNotification('打铃提醒', `${bellTypeText}铃: ${bellItem.name} (${bellItem.time})`, 'bell');
+            
+            // 播放对应铃声
+            const audioPlayer = bellItem.type === 'classStart' ? audioPlayers.classStart : audioPlayers.classEnd;
+            
+            // 重置并播放
+            audioPlayer.currentTime = 0;
+            audioPlayer.play().catch(error => {
+                console.error('播放铃声失败:', error);
+            });
+            
+            // 铃铛动画
+            animateBell();
+        }
+        
+        // 铃铛动画
+        function animateBell() {
+            mainBellIcon.classList.add('ringing');
+            setTimeout(() => {
+                mainBellIcon.classList.remove('ringing');
+            }, 1000);
+        }
+        
+        // 更新当前时间显示
+        function updateCurrentTime() {
+            const now = new Date();
+            currentTimeDisplay.textContent = formatDateTime(now);
+        }
+        
+        // 更新下次打铃信息
+        function updateNextBellInfo() {
+            const now = new Date();
+            const currentTime = formatTime(now);
+            
+            // 按时间排序
+            const sortedSchedule = [...schedule].sort((a, b) => a.time.localeCompare(b.time));
+            
+            // 查找下次打铃
+            let nextBell = null;
+            
+            // 先查找今天的下次打铃
+            for (const item of sortedSchedule) {
+                if (item.time > currentTime) {
+                    nextBell = item;
+                    break;
+                }
+            }
+            
+            // 如果今天没有了，取明天的第一个
+            if (!nextBell && sortedSchedule.length > 0) {
+                nextBell = sortedSchedule[0];
+            }
+            
+            if (nextBell) {
+                // 计算时间差
+                const nowTime = now.getHours() * 60 + now.getMinutes();
+                const [nextHours, nextMinutes] = nextBell.time.split(':').map(Number);
+                let nextTime = nextHours * 60 + nextMinutes;
+                
+                // 如果是明天的，加上一天的分钟数
+                if (nextTime <= nowTime) {
+                    nextTime += 24 * 60;
+                }
+                
+                const minutesUntilNext = nextTime - nowTime;
+                const hours = Math.floor(minutesUntilNext / 60);
+                const minutes = minutesUntilNext % 60;
+                
+                // 更新显示
+                timeUntilNextDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+                nextBellTypeDisplay.textContent = nextBell.type === 'classStart' ? '上课' : '下课';
+                nextBellTimeDisplay.textContent = nextBell.time;
+                
+                // 设置下次打铃提醒
+                if (nextBellTimeout) {
+                    clearTimeout(nextBellTimeout);
+                }
+                
+                nextBellTimeout = setTimeout(() => {
+                    updateNextBellInfo();
+                }, 60000); // 每分钟更新一次
+            } else {
+                // 没有设置打铃时间
+                timeUntilNextDisplay.textContent = '--:--:--';
+                nextBellTypeDisplay.textContent = '-';
+                nextBellTimeDisplay.textContent = '-';
+            }
+        }
+        
+        // 设置事件监听
+        function setupEventListeners() {
+            // 添加时间点
+            addTimeBtn.addEventListener('click', () => {
+                openTimeModal();
+            });
+            
+            // 关闭模态框
+            closeModalBtn.addEventListener('click', closeTimeModal);
+            cancelModalBtn.addEventListener('click', closeTimeModal);
+            
+            // 点击模态框外部关闭
+            timeModal.addEventListener('click', (e) => {
+                if (e.target === timeModal) {
+                    closeTimeModal();
+                }
+            });
+            
+            // 提交时间表单
+            timeForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveTimeItem();
+            });
+            
+            // 编辑时间点
+            scheduleList.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-time');
+                const deleteBtn = e.target.closest('.delete-time');
+                
+                if (editBtn) {
+                    const id = editBtn.dataset.id;
+                    editTimeItem(id);
+                } else if (deleteBtn) {
+                    const id = deleteBtn.dataset.id;
+                    deleteTimeItem(id);
+                }
+            });
+            
+            // 播放上课铃声
+            playClassStartBtn.addEventListener('click', () => {
+                previewSound(bellSounds.classStart.filePath);
+            });
+            
+            // 播放下课铃声
+            playClassEndBtn.addEventListener('click', () => {
+                previewSound(bellSounds.classEnd.filePath);
+            });
+            
+            // 选择上课铃声
+            selectClassStartBtn.addEventListener('click', () => {
+                classStartFile.click();
+            });
+            
+            // 选择下课铃声
+            selectClassEndBtn.addEventListener('click', () => {
+                classEndFile.click();
+            });
+            
+            // 重置上课铃声
+            resetClassStartBtn.addEventListener('click', () => {
+                bellSounds.classStart = {
+                    name: '默认上课铃',
+                    filePath: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'
+                };
+                updateUIState();
+                saveToLocalStorage();
+                showNotification('成功', '上课铃声已重置为默认', 'success');
+            });
+            
+            // 重置下课铃声
+            resetClassEndBtn.addEventListener('click', () => {
+                bellSounds.classEnd = {
+                    name: '默认下课铃',
+                    filePath: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'
+                };
+                updateUIState();
+                saveToLocalStorage();
+                showNotification('成功', '下课铃声已重置为默认', 'success');
+            });
+            
+            // 上课铃声文件选择
+            classStartFile.addEventListener('change', (e) => {
+                handleSoundFileSelect(e, 'classStart');
+            });
+            
+            // 下课铃声文件选择
+            classEndFile.addEventListener('change', (e) => {
+                handleSoundFileSelect(e, 'classEnd');
+            });
+            
+            // 音量控制
+            volumeControl.addEventListener('input', (e) => {
+                setVolume(parseInt(e.target.value));
+                saveToLocalStorage();
+            });
+            
+            // 导入配置
+            importBtn.addEventListener('click', () => {
+                importConfig.click();
+            });
+            
+            // 导出配置
+            exportBtn.addEventListener('click', exportConfig);
+            
+            // 配置文件选择
+            importConfig.addEventListener('change', handleConfigImport);
+            
+            // 打铃功能开关
+            bellEnabledSwitch.addEventListener('change', (e) => {
+                settings.bellEnabled = e.target.checked;
+                trayBellStatus.textContent = settings.bellEnabled ? '禁用打铃' : '启用打铃';
+                saveToLocalStorage();
+                showNotification('设置已更新', settings.bellEnabled ? '打铃功能已启用' : '打铃功能已禁用', 'info');
+            });
+            
+            // 声音输出开关
+            soundEnabledSwitch.addEventListener('change', (e) => {
+                settings.soundEnabled = e.target.checked;
+                saveToLocalStorage();
+                showNotification('设置已更新', settings.soundEnabled ? '声音输出已启用' : '声音输出已禁用', 'info');
+            });
+            
+            // 关闭通知
+            closeNotificationBtn.addEventListener('click', hideNotification);
+            
+            // 循环定时器事件监听
+            loopStartBtn.addEventListener('click', startLoopTimer);
+            loopPauseBtn.addEventListener('click', pauseLoopTimer);
+            loopResumeBtn.addEventListener('click', resumeLoopTimer);
+            loopStopBtn.addEventListener('click', stopLoopTimer);
+            
+            // 输入验证
+            loopIntervalAInput.addEventListener('input', validateLoopInput);
+            loopIntervalBInput.addEventListener('input', validateLoopInput);
+            
+            // 页面导航点击事件
+            pageNavItems.forEach((item, index) => {
+                item.addEventListener('click', () => {
+                    goToPage(index);
+                });
+            });
+            
+            // 页面指示器点击事件
+            pageDots.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    goToPage(index);
+                });
+            });
+        }
+        
+        // 初始化滑动功能
+        function initSwiper() {
+            const container = document.querySelector('.swiper-container');
+            
+            // 触摸事件
+            container.addEventListener('touchstart', handleTouchStart, { passive: true });
+            container.addEventListener('touchmove', handleTouchMove, { passive: true });
+            container.addEventListener('touchend', handleTouchEnd, { passive: true });
+            
+            // 鼠标事件（桌面端支持）
+            container.addEventListener('mousedown', handleMouseDown);
+            container.addEventListener('mousemove', handleMouseMove);
+            container.addEventListener('mouseup', handleMouseUp);
+            container.addEventListener('mouseleave', handleMouseUp);
+            
+            // 滚轮事件（桌面端支持）
+            container.addEventListener('wheel', handleWheel, { passive: true });
+            
+            // 键盘事件
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // 显示滑动提示
+            showSwipeHints();
+        }
+        
+        // 显示滑动提示
+        function showSwipeHints() {
+            setTimeout(() => {
+                if (currentPage === 0 && swipeHintRight) {
+                    swipeHintRight.classList.add('show');
+                    setTimeout(() => {
+                        swipeHintRight.classList.remove('show');
+                    }, 2000);
+                }
+            }, 1000);
+        }
+        
+        // 处理触摸开始
+        function handleTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = true;
+        }
+        
+        // 处理触摸移动
+        function handleTouchMove(e) {
+            if (!isSwiping) return;
+            
+            touchEndX = e.touches[0].clientX;
+            const diffX = touchStartX - touchEndX;
+            
+            // 添加视觉反馈
+            if (Math.abs(diffX) > 10) {
+                const wrapper = document.getElementById('swiper-wrapper');
+                const currentTransform = -currentPage * 100;
+                const movePercent = currentTransform - (diffX / window.innerWidth) * 100;
+                wrapper.style.transform = `translateX(${movePercent}%)`;
+            }
+        }
+        
+        // 处理触摸结束
+        function handleTouchEnd(e) {
+            if (!isSwiping) return;
+            
+            isSwiping = false;
+            const diffX = touchStartX - touchEndX;
+            
+            // 恢复过渡效果
+            const wrapper = document.getElementById('swiper-wrapper');
+            wrapper.style.transition = 'transform 0.3s ease-out';
+            
+            if (Math.abs(diffX) > swipeThreshold) {
+                if (diffX > 0 && currentPage < totalPages - 1) {
+                    // 向左滑动，下一页
+                    goToPage(currentPage + 1);
+                } else if (diffX < 0 && currentPage > 0) {
+                    // 向右滑动，上一页
+                    goToPage(currentPage - 1);
+                } else {
+                    // 回弹到当前页
+                    goToPage(currentPage);
+                }
+            } else {
+                // 滑动距离不够，回弹
+                goToPage(currentPage);
+            }
+            
+            // 重置
+            touchStartX = 0;
+            touchEndX = 0;
+        }
+        
+        // 鼠标事件处理
+        let isMouseDown = false;
+        let mouseStartX = 0;
+        
+        function handleMouseDown(e) {
+            isMouseDown = true;
+            mouseStartX = e.clientX;
+            const wrapper = document.getElementById('swiper-wrapper');
+            wrapper.style.transition = 'none';
+        }
+        
+        function handleMouseMove(e) {
+            if (!isMouseDown) return;
+            
+            const diffX = mouseStartX - e.clientX;
+            const wrapper = document.getElementById('swiper-wrapper');
+            const currentTransform = -currentPage * 100;
+            const movePercent = currentTransform - (diffX / window.innerWidth) * 100;
+            wrapper.style.transform = `translateX(${movePercent}%)`;
+        }
+        
+        function handleMouseUp(e) {
+            if (!isMouseDown) return;
+            
+            isMouseDown = false;
+            const diffX = mouseStartX - e.clientX;
+            
+            const wrapper = document.getElementById('swiper-wrapper');
+            wrapper.style.transition = 'transform 0.3s ease-out';
+            
+            if (Math.abs(diffX) > swipeThreshold) {
+                if (diffX > 0 && currentPage < totalPages - 1) {
+                    goToPage(currentPage + 1);
+                } else if (diffX < 0 && currentPage > 0) {
+                    goToPage(currentPage - 1);
+                } else {
+                    goToPage(currentPage);
+                }
+            } else {
+                goToPage(currentPage);
+            }
+        }
+        
+        // 滚轮事件处理
+        let wheelTimeout = null;
+        function handleWheel(e) {
+            if (wheelTimeout) return;
+            
+            wheelTimeout = setTimeout(() => {
+                wheelTimeout = null;
+            }, 500);
+            
+            if (e.deltaX > 50 && currentPage < totalPages - 1) {
+                goToPage(currentPage + 1);
+            } else if (e.deltaX < -50 && currentPage > 0) {
+                goToPage(currentPage - 1);
+            }
+        }
+        
+        // 键盘事件处理
+        function handleKeyDown(e) {
+            if (e.key === 'ArrowLeft' && currentPage > 0) {
+                goToPage(currentPage - 1);
+            } else if (e.key === 'ArrowRight' && currentPage < totalPages - 1) {
+                goToPage(currentPage + 1);
+            }
+        }
+        
+        // 切换到指定页面
+        function goToPage(pageIndex) {
+            if (pageIndex < 0 || pageIndex >= totalPages) return;
+            
+            currentPage = pageIndex;
+            
+            // 更新滑动位置
+            const wrapper = document.getElementById('swiper-wrapper');
+            wrapper.style.transform = `translateX(-${currentPage * 100}%)`;
+            
+            // 更新页面指示器
+            pageDots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentPage);
+            });
+            
+            // 更新页面导航
+            pageNavItems.forEach((item, index) => {
+                item.classList.toggle('active', index === currentPage);
+            });
+            
+            // 更新滑动提示
+            updateSwipeHints();
+            
+            // 保存当前页面到本地存储
+            try {
+                localStorage.setItem('schoolBellCurrentPage', currentPage);
+            } catch (error) {
+                console.error('保存当前页面失败:', error);
+            }
+        }
+        
+        // 更新滑动提示
+        function updateSwipeHints() {
+            if (swipeHintLeft) {
+                swipeHintLeft.classList.toggle('show', currentPage > 0);
+            }
+            if (swipeHintRight) {
+                swipeHintRight.classList.toggle('show', currentPage < totalPages - 1);
+            }
+        }
+        
+        // 加载保存的页面
+        function loadSavedPage() {
+            try {
+                const savedPage = localStorage.getItem('schoolBellCurrentPage');
+                if (savedPage !== null) {
+                    const pageIndex = parseInt(savedPage);
+                    if (pageIndex >= 0 && pageIndex < totalPages) {
+                        goToPage(pageIndex);
+                    }
+                }
+            } catch (error) {
+                console.error('加载保存的页面失败:', error);
+            }
+        }
+        
+        // 验证循环定时器输入
+        function validateLoopInput(e) {
+            const input = e.target;
+            let value = parseInt(input.value);
+            
+            // 处理非数字或负数
+            if (isNaN(value) || value < 1) {
+                input.value = 1;
+                showNotification('提示', '时间间隔必须大于0分钟', 'info');
+            } else if (value > 999) {
+                input.value = 999;
+                showNotification('提示', '时间间隔最大为999分钟', 'info');
+            }
+        }
+        
+        // 开始循环定时器
+        function startLoopTimer() {
+            // 获取输入值
+            const intervalA = parseInt(loopIntervalAInput.value) || 25;
+            const intervalB = parseInt(loopIntervalBInput.value) || 5;
+            
+            // 验证输入
+            if (intervalA < 1 || intervalB < 1) {
+                showNotification('错误', '时间间隔必须大于0分钟', 'error');
+                return;
+            }
+            
+            // 初始化循环定时器状态
+            loopTimer.intervalA = intervalA;
+            loopTimer.intervalB = intervalB;
+            loopTimer.isRunning = true;
+            loopTimer.isPaused = false;
+            loopTimer.currentInterval = 'A';
+            loopTimer.remainingTime = 0;
+            loopTimer.pauseStartTime = null;
+            
+            // 计算下次提醒时间
+            const now = new Date();
+            loopTimer.nextReminderTime = new Date(now.getTime() + intervalA * 60000);
+            
+            // 更新UI
+            updateLoopUI();
+            
+            // 显示状态区域
+            loopStatusDiv.classList.remove('hidden');
+            
+            // 启动定时器
+            scheduleNextLoopReminder();
+            
+            showNotification('成功', `循环定时器已启动：${intervalA}分钟-${intervalB}分钟循环`, 'success');
+            
+            // 保存设置
+            saveLoopSettings();
+        }
+        
+        // 暂停循环定时器
+        function pauseLoopTimer() {
+            if (!loopTimer.isRunning || loopTimer.isPaused) return;
+            
+            loopTimer.isPaused = true;
+            loopTimer.pauseStartTime = new Date();
+            
+            // 清除当前定时器
+            if (loopTimer.timeoutId) {
+                clearTimeout(loopTimer.timeoutId);
+                loopTimer.timeoutId = null;
+            }
+            
+            // 计算剩余时间
+            const now = new Date();
+            loopTimer.remainingTime = loopTimer.nextReminderTime.getTime() - now.getTime();
+            
+            // 更新UI
+            updateLoopUI();
+            
+            showNotification('提示', '循环定时器已暂停', 'info');
+        }
+        
+        // 继续循环定时器
+        function resumeLoopTimer() {
+            if (!loopTimer.isRunning || !loopTimer.isPaused) return;
+            
+            loopTimer.isPaused = false;
+            
+            // 重新计算下次提醒时间
+            const now = new Date();
+            loopTimer.nextReminderTime = new Date(now.getTime() + loopTimer.remainingTime);
+            loopTimer.remainingTime = 0;
+            loopTimer.pauseStartTime = null;
+            
+            // 更新UI
+            updateLoopUI();
+            
+            // 重新启动定时器
+            scheduleNextLoopReminder();
+            
+            showNotification('提示', '循环定时器已继续', 'info');
+        }
+        
+        // 停止循环定时器
+        function stopLoopTimer() {
+            // 清除定时器
+            if (loopTimer.timeoutId) {
+                clearTimeout(loopTimer.timeoutId);
+                loopTimer.timeoutId = null;
+            }
+            
+            // 重置状态
+            loopTimer.isRunning = false;
+            loopTimer.isPaused = false;
+            loopTimer.currentInterval = 'A';
+            loopTimer.nextReminderTime = null;
+            loopTimer.remainingTime = 0;
+            loopTimer.pauseStartTime = null;
+            
+            // 更新UI
+            updateLoopUI();
+            
+            // 隐藏状态区域
+            loopStatusDiv.classList.add('hidden');
+            
+            showNotification('提示', '循环定时器已停止', 'info');
+        }
+        
+        // 安排下一次循环提醒
+        function scheduleNextLoopReminder() {
+            if (!loopTimer.isRunning || loopTimer.isPaused) return;
+            
+            const now = new Date();
+            const delay = loopTimer.nextReminderTime.getTime() - now.getTime();
+            
+            if (delay <= 0) {
+                // 如果已经过期，立即执行
+                executeLoopReminder();
+            } else {
+                // 设置定时器
+                loopTimer.timeoutId = setTimeout(() => {
+                    executeLoopReminder();
+                }, delay);
+            }
+            
+            // 更新显示
+            updateLoopDisplay();
+        }
+        
+        // 执行循环提醒
+        function executeLoopReminder() {
+            if (!loopTimer.isRunning) return;
+            
+            // 播放铃声
+            playLoopBell();
+            
+            // 切换间隔
+            if (loopTimer.currentInterval === 'A') {
+                loopTimer.currentInterval = 'B';
+                const intervalB = loopTimer.intervalB;
+                loopTimer.nextReminderTime = new Date(Date.now() + intervalB * 60000);
+            } else {
+                loopTimer.currentInterval = 'A';
+                const intervalA = loopTimer.intervalA;
+                loopTimer.nextReminderTime = new Date(Date.now() + intervalA * 60000);
+            }
+            
+            // 更新UI
+            updateLoopUI();
+            
+            // 继续下一次循环
+            scheduleNextLoopReminder();
+        }
+        
+        // 播放循环提醒铃声
+        function playLoopBell() {
+            // 检查声音是否启用
+            if (!settings.soundEnabled) {
+                showNotification('提醒', '循环定时提醒（声音已关闭）', 'info');
+                animateBell();
+                return;
+            }
+            
+            // 使用上课铃声作为循环提醒铃声
+            const audioPlayer = audioPlayers.classStart;
+            
+            // 显示通知
+            const intervalType = loopTimer.currentInterval === 'A' ? '首次' : '第二次';
+            showNotification('循环提醒', `${intervalType}间隔结束，开始${loopTimer.currentInterval === 'A' ? loopTimer.intervalB : loopTimer.intervalA}分钟间隔`, 'bell');
+            
+            // 播放铃声
+            audioPlayer.currentTime = 0;
+            audioPlayer.play().catch(error => {
+                console.error('播放循环提醒铃声失败:', error);
+                showNotification('错误', '播放铃声失败，请检查系统音量', 'error');
+            });
+            
+            // 铃铛动画
+            animateBell();
+        }
+        
+        // 更新循环定时器UI
+        function updateLoopUI() {
+            if (!loopTimer.isRunning) {
+                // 停止状态
+                loopStartBtn.classList.remove('hidden');
+                loopPauseBtn.classList.add('hidden');
+                loopResumeBtn.classList.add('hidden');
+                loopStopBtn.classList.add('hidden');
+                loopStateText.textContent = '已停止';
+                loopStateText.className = 'text-sm font-semibold text-gray-500';
+                return;
+            }
+            
+            if (loopTimer.isPaused) {
+                // 暂停状态
+                loopStartBtn.classList.add('hidden');
+                loopPauseBtn.classList.add('hidden');
+                loopResumeBtn.classList.remove('hidden');
+                loopStopBtn.classList.remove('hidden');
+                loopStateText.textContent = '已暂停';
+                loopStateText.className = 'text-sm font-semibold text-yellow-600';
+            } else {
+                // 运行状态
+                loopStartBtn.classList.add('hidden');
+                loopPauseBtn.classList.remove('hidden');
+                loopResumeBtn.classList.add('hidden');
+                loopStopBtn.classList.remove('hidden');
+                loopStateText.textContent = '运行中';
+                loopStateText.className = 'text-sm font-semibold text-green-600';
+            }
+            
+            // 更新当前间隔显示
+            loopCurrentInterval.textContent = loopTimer.currentInterval === 'A' 
+                ? `${loopTimer.intervalA}分钟` 
+                : `${loopTimer.intervalB}分钟`;
+        }
+        
+        // 更新循环定时器显示
+        function updateLoopDisplay() {
+            if (!loopTimer.isRunning || !loopTimer.nextReminderTime) return;
+            
+            const now = new Date();
+            const diff = loopTimer.nextReminderTime.getTime() - now.getTime();
+            
+            if (diff > 0) {
+                const hours = Math.floor(diff / 3600000);
+                const minutes = Math.floor((diff % 3600000) / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                
+                if (hours > 0) {
+                    loopNextTime.textContent = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    loopNextTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            } else {
+                loopNextTime.textContent = '00:00';
+            }
+        }
+        
+        // 保存循环定时器设置
+        function saveLoopSettings() {
+            try {
+                const loopSettings = {
+                    intervalA: loopTimer.intervalA,
+                    intervalB: loopTimer.intervalB
+                };
+                localStorage.setItem('schoolBellLoopSettings', JSON.stringify(loopSettings));
+            } catch (error) {
+                console.error('保存循环定时器设置失败:', error);
+            }
+        }
+        
+        // 加载循环定时器设置
+        function loadLoopSettings() {
+            try {
+                const savedSettings = localStorage.getItem('schoolBellLoopSettings');
+                if (savedSettings) {
+                    const loopSettings = JSON.parse(savedSettings);
+                    loopTimer.intervalA = loopSettings.intervalA || 25;
+                    loopTimer.intervalB = loopSettings.intervalB || 5;
+                    
+                    // 更新输入框
+                    loopIntervalAInput.value = loopTimer.intervalA;
+                    loopIntervalBInput.value = loopTimer.intervalB;
+                }
+            } catch (error) {
+                console.error('加载循环定时器设置失败:', error);
+            }
+        }
+        
+        // 打开时间模态框
+        function openTimeModal(timeItem = null) {
+            if (timeItem) {
+                // 编辑模式
+                modalTitle.textContent = '编辑时间点';
+                timeId.value = timeItem.id;
+                timeInput.value = timeItem.time;
+                bellType.value = timeItem.type;
+                timeName.value = timeItem.name;
+                deleteTimeBtn.classList.remove('hidden');
+                currentEditId = timeItem.id;
+            } else {
+                // 添加模式
+                modalTitle.textContent = '添加时间点';
+                timeForm.reset();
+                timeId.value = '';
+                deleteTimeBtn.classList.add('hidden');
+                currentEditId = null;
+            }
+            
+            timeModal.classList.remove('hidden');
+        }
+        
+        // 关闭时间模态框
+        function closeTimeModal() {
+            timeModal.classList.add('hidden');
+            currentEditId = null;
+        }
+        
+        // 保存时间项
+        function saveTimeItem() {
+            const id = timeId.value || generateId();
+            const time = timeInput.value;
+            const type = bellType.value;
+            const name = timeName.value;
+            
+            // 检查时间是否冲突
+            const conflictItem = schedule.find(item => 
+                item.time === time && item.id !== id
+            );
+            
+            if (conflictItem) {
+                showNotification('错误', '该时间点已存在', 'error');
+                return;
+            }
+            
+            if (currentEditId) {
+                // 编辑现有项
+                const index = schedule.findIndex(item => item.id === currentEditId);
+                if (index !== -1) {
+                    schedule[index] = { id, time, type, name };
+                }
+            } else {
+                // 添加新项
+                schedule.push({ id, time, type, name });
+            }
+            
+            // 保存并更新UI
+            saveToLocalStorage();
+            renderSchedule();
+            updateNextBellInfo();
+            closeTimeModal();
+            
+            showNotification('成功', currentEditId ? '时间点已更新' : '时间点已添加', 'success');
+        }
+        
+        // 编辑时间项
+        function editTimeItem(id) {
+            const timeItem = schedule.find(item => item.id === id);
+            if (timeItem) {
+                openTimeModal(timeItem);
+            }
+        }
+        
+        // 删除时间项
+        function deleteTimeItem(id) {
+            if (confirm('确定要删除这个时间点吗？')) {
+                schedule = schedule.filter(item => item.id !== id);
+                saveToLocalStorage();
+                renderSchedule();
+                updateNextBellInfo();
+                showNotification('成功', '时间点已删除', 'success');
+            }
+        }
+        
+        // 处理铃声文件选择
+        function handleSoundFileSelect(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // 检查文件类型
+            if (!file.type.includes('audio')) {
+                showNotification('错误', '请选择音频文件', 'error');
+                return;
+            }
+            
+            // 创建文件URL
+            const fileURL = URL.createObjectURL(file);
+            
+            // 更新铃声设置
+            bellSounds[type] = {
+                name: file.name,
+                filePath: fileURL
+            };
+            
+            // 更新UI
+            updateUIState();
+            saveToLocalStorage();
+            
+            showNotification('成功', `${type === 'classStart' ? '上课' : '下课'}铃声已更新`, 'success');
+        }
+        
+        // 预览声音
+        function previewSound(filePath) {
+            if (!settings.soundEnabled) {
+                showNotification('提示', '声音输出已禁用', 'info');
+                return;
+            }
+            
+            audioPlayers.preview.src = filePath;
+            audioPlayers.preview.currentTime = 0;
+            audioPlayers.preview.play().catch(error => {
+                console.error('预览声音失败:', error);
+                showNotification('错误', '预览声音失败', 'error');
+            });
+        }
+        
+        // 导入配置
+        function handleConfigImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    
+                    // 验证配置格式
+                    if (!config.schedule || !Array.isArray(config.schedule)) {
+                        throw new Error('配置格式不正确');
+                    }
+                    
+                    // 更新配置
+                    if (config.schedule) schedule = config.schedule;
+                    if (config.bellSounds) bellSounds = config.bellSounds;
+                    if (config.settings) settings = { ...settings, ...config.settings };
+                    
+                    // 更新UI
+                    renderSchedule();
+                    updateUIState();
+                    saveToLocalStorage();
+                    
+                    // 重新初始化音频播放器
+                    initAudioPlayers();
+                    
+                    showNotification('成功', '配置已导入', 'success');
+                } catch (error) {
+                    console.error('导入配置失败:', error);
+                    showNotification('错误', '导入配置失败: ' + error.message, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+            event.target.value = ''; // 重置文件输入
+        }
+        
+        // 导出配置
+        function exportConfig() {
+            const config = {
+                schedule,
+                bellSounds,
+                settings
+            };
+            
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `school-bell-config-${formatDate(new Date())}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showNotification('成功', '配置已导出', 'success');
+        }
+        
+
+        
+        // 显示通知
+        function showNotification(title, message, type = 'info') {
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            // 设置图标
+            let iconClass = 'fa-info-circle';
+            if (type === 'success') iconClass = 'fa-check-circle';
+            else if (type === 'error') iconClass = 'fa-exclamation-circle';
+            else if (type === 'bell') iconClass = 'fa-bell';
+            
+            notificationIcon.className = `fa ${iconClass}`;
+            
+            // 显示通知
+            notification.classList.remove('translate-y-20', 'opacity-0');
+            
+            // 3秒后自动隐藏
+            clearTimeout(notification.hideTimeout);
+            notification.hideTimeout = setTimeout(hideNotification, 5000);
+        }
+        
+        // 隐藏通知
+        function hideNotification() {
+            notification.classList.add('translate-y-20', 'opacity-0');
+        }
+        
+        // 生成唯一ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+        
+        // 格式化时间 (HH:MM)
+        function formatTime(date) {
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(date) {
+            return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${formatTime(date)}:${date.getSeconds().toString().padStart(2, '0')}`;
+        }
+        
+        // 格式化日期 (YYYY-MM-DD)
+        function formatDate(date) {
+            return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
 </html>
